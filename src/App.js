@@ -17,11 +17,30 @@ function App() {
       zoom: 10
     }
   );
+  const [userLocation, setUserLocation] = useState({});
 
 
-    const [selectedPark, setSelectedPark] = useState(null);
+  const [selectedPark, setSelectedPark] = useState(null);
 
-    useEffect(()=>{
+  function getUserLocation(){
+    navigator.geolocation.getCurrentPosition(position => {
+     let newLocation = {
+         lat: position.coords.latitude,
+         long: position.coords.longitude
+      };
+     let newViewport = {
+        height: "100vh",
+        width: "100vw",
+        latitude: position.coords.latitude,
+        longitude: position.coords.longitude,
+        zoom: 10
+      };
+      setViewport(newViewport);
+      setUserLocation(newLocation);
+      console.log(newViewport);
+   });
+  };
+  useEffect(()=>{
       const listener = e => {
         if(e.key === 'Escape') {
           setSelectedPark(null);
@@ -35,6 +54,9 @@ function App() {
     }, [])
     return (
       <div>
+      <button onClick={getUserLocation}>
+        Click to get location
+      </button>
         <ReactMapGL {...viewport}
           mapboxApiAccessToken={process.env.REACT_APP_MAP_TOKEN}
           mapStyle='mapbox://styles/peachplucker/ck61exaww025d1jmpbk39he8u'
