@@ -27,6 +27,20 @@
 .App-link {
   color: #61dafb;
 }
+.edit {
+  float: left;
+  margin: 1em;
+}
+.gas-type {
+  float: left;
+  width: 33%;
+}
+
+header {
+  background-color: green;
+  height: 1rem;
+  width: 100%;
+}
 
 @keyframes App-logo-spin {
   from {
@@ -35,4 +49,20 @@
   to {
     transform: rotate(360deg);
   }
+}
+
+.mapboxgl-popup-content{
+  width: 15rem;
+  background: grey;
+}
+
+.price {
+  font-size: x-large;
+}
+
+.updated {
+  margin-top: 1.5em;
+  font-size: 8px;
+  color: red;
+  float: left;
 }
