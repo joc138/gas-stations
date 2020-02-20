@@ -1,18 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
 import ReactMapGL, { Marker, Popup } from 'react-map-gl';
-import MapStations from './components/mapStations'
+import PopupInfo from './components/PopupInfo';
+import MapStations from './components/mapStations';
+import YelpService from './yelp';
+import db from './base';
+import logo from './logo.svg';
 import './App.css';
-import YelpService from './yelp'
-import * as parkData from './data/skateparks.json'
-import PopupInfo from './components/PopupInfo'
-
 
 function App() {
   const defaultLat = 45.4211;
   const defaultLong =  -75.6903;
   const [userLocation, setUserLocation] = useState({defaultLat,defaultLong});
-  const [selectedPark, setSelectedPark] = useState(null);
+  const [selectedStation, setSelectedStation] = useState(null);
   const [gasStations,setGasStations] = useState([]);
   const [viewport, setViewport] = useState({
     latitude: defaultLat,
@@ -21,13 +20,79 @@ function App() {
     height: '100vh',
     zoom: 10
   });
+  const [stationProps,setStationProps] = useState({});
+  var sortable = [];
+  var sortedObject = {};
+  var id = 1;
 
   var getGasStations = async() => {
-    var currentUserLocation = userLocation;
-    var gasPlaces = await YelpService.getGasStations(currentUserLocation);
-    console.log(gasPlaces)
+    let currentUserLocation = {
+      lat: viewport.latitude,
+      long: viewport.longitude
+    };
+    let gasPlaces = await YelpService.getGasStations(currentUserLocation);
+    sortedObject = {};
+    sortable = [];
+    console.log(gasPlaces);
     setGasStations({gasPlaces});
+    getPrices(gasPlaces);
   }
+
+  async function getData (identity) {
+    let id = identity.id;
+    console.log(id);
+    let listOfPrices = [3.50,3.50,3.50];
+    db.collection('gas-locations').doc(id).get().then(function(snapshot){
+      if(snapshot.exists){
+        console.log('price of lowest gas: '+ snapshot.data().price[0]);
+        listOfPrices = snapshot.data().price
+      }else{
+        console.log('id does not exist');
+        db.collection('gas-locations').doc(id).set({
+          name: identity.name,
+          coordinates: identity.coords,
+          distance: identity.distance,
+          price: [3.50,3.50,3.50]
+        });
+      }
+    })
+    return listOfPrices[0];
+  }
+
+  async function getPrices(response) {
+    let counter = 1;
+     response.forEach(async function(item){
+       let identity = item.id;
+       let location = item.coords;
+       let dist = item.distance;
+       let title = item.name;
+       let prices = await getData(item);
+
+       console.log('these are the prices in getPrices: '+ prices);
+       sortable.push([identity,prices,location,dist,title]);
+       sortedObject[identity]={
+          name: title,
+          coordinates: location,
+          distance: dist,
+          price: prices
+       }
+      })
+
+    sortable.sort(function(a,b){
+      return a[1]-b[1];
+    });
+
+    console.log(sortable);
+
+    sortable.forEach(function(item){
+      if(counter>3){
+        counter = 3;
+      }
+      sortedObject[item[0]].grade = counter++;
+    });
+
+    setStationProps(sortedObject);
+  };
 
   function getUserLocation(){
     navigator.geolocation.getCurrentPosition(position => {
@@ -48,15 +113,10 @@ function App() {
    });
   };
 
-  var getPrices = async() => {
-    await getGasStations();
-    console.log(...gasStations);
-  }
-
   useEffect(()=>{
       const listener = e => {
         if(e.key === 'Escape') {
-          setSelectedPark(null);
+          setSelectedStation(null);
         }
       };
       window.addEventListener('keydown',listener);
@@ -71,8 +131,8 @@ function App() {
           <button onClick={getUserLocation}>
             Click to get location
           </button>
-          <button onClick={getPrices}>
-            Click to get gas prices nearby
+          <button onClick={getGasStations}>
+            Click to get gas Stations nearby
           </button>
           <ReactMapGL {...viewport}
               mapboxApiAccessToken={process.env.REACT_APP_MAP_TOKEN}
@@ -81,27 +141,27 @@ function App() {
                 setViewport(viewport)
               }}
             >
-            {parkData.features.map(park => (
-                <Marker key={park.properties.PARK_ID}
-                  latitude={park.geometry.coordinates[1]}
-                  longitude={park.geometry.coordinates[0]}
+            {gasStations.gasPlaces==null ? null : gasStations.gasPlaces.map(station => (
+                <Marker key={++id}
+                  latitude={station.coords.latitude}
+                  longitude={station.coords.longitude}
                 >
                   <button className='marker-btn' onClick={e => {
                     e.preventDefault();
-                    setSelectedPark(park);
+                    setSelectedStation(station);
                   }}>
                     <img src='gsIcon.svg' alt='skate park icon'></img>
                   </button>
                 </Marker>
             ))}
-            {selectedPark ? (
+            {selectedStation ? (
               <Popup
-                latitude={selectedPark.geometry.coordinates[1]}
-                longitude={selectedPark.geometry.coordinates[0]}
+                latitude={selectedStation.coords.latitude}
+                longitude={selectedStation.coords.longitude}
                 onClose={() => {
-                  setSelectedPark(null);
+                  setSelectedStation(null);
                 }}>
-                <PopupInfo />
+                <PopupInfo object={stationProps} station={selectedStation}/>
               </Popup>
             ) : null}
           </ReactMapGL>

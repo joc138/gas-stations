@@ -12,7 +12,7 @@ const getGasStations = userLocation => {
   return api.get('businesses/search',{
       params: {
         limit: 10,
-        categories: 'gas',
+        categories: 'servicestations, All',
         latitude: userLocation.lat,
         longitude: userLocation.long,
       }
@@ -20,11 +20,13 @@ const getGasStations = userLocation => {
     .then(res =>
     res.data.businesses.map(business => {
       return {
+        id: business.id,
         name: business.name,
         coords: business.coordinates,
+        location: business.location,
+        distance: business.distance
       }
-    }
-  )
+    })
   )
    .catch(error => console.error(error))
 }
